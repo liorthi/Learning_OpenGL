@@ -42,21 +42,21 @@ int main()
     if (shaderProgram == -1)
         return -1;
     
-    std::vector<float> vertices = generateVertices(numberOfPoints, 0.5f); // generate 100 segments for a smoother circle
-    std::vector<unsigned int> indices = generateIndices(numberOfPoints); // generate indices for the circle segments
+    std::vector<float> vertices = generateVertices(numberOfPoints, 0.5f);
+    std::vector<unsigned int> indices = generateIndices(numberOfPoints);
     
     
     unsigned int VAO, VBO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    glGenVertexArrays(1, &VAO); // VAO - Vertex Array Object: stores the vertex attribute configuration and which VBO to use
+    glGenBuffers(1, &VBO);      // VBO - Vertex Buffer Object: stores the actual vertex data in GPU memory
+    glGenBuffers(1, &EBO);      // EBO - Element Buffer Object: stores the indices for indexed drawing, allowing reuse of vertex data and reducing redundancy
     
     glBindVertexArray(VAO);  // bind VAO 
     
     glBindBuffer(GL_ARRAY_BUFFER, VBO); // bind VBO
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
     
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO); // bind EBO
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW); 
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
@@ -93,6 +93,14 @@ int main()
     return 0;
 }
 
+/*
+Initializes GLFW, creates a window, and sets up OpenGL context. 
+It also loads OpenGL function pointers using GLAD. If any step fails, it prints an error message and returns nullptr.
+@param width The width of the window to create.
+@param height The height of the window to create.
+@param title The title of the window to create.
+@return A pointer to the created GLFWwindow, or nullptr if initialization fails.
+*/
 GLFWwindow *initWindow(int width, int height, const char *title)
 {
     glfwInit();
@@ -120,19 +128,39 @@ GLFWwindow *initWindow(int width, int height, const char *title)
     return window;
 }
 
+/*
+The callback function that gets called whenever the window is resized. 
+It adjusts the OpenGL viewport to match the new window dimensions, ensuring that the rendered content scales correctly with the window size.
+@param window The GLFWwindow that was resized.
+@param width The new width of the window.
+@param height The new height of the window.
+*/
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
 
+/*
+Processes user input (e.g., keyboard input).
+@param window The GLFWwindow to check for input events. 
+*/
 void processInput(GLFWwindow *window)
 {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 }
 
+/*
+Creates a shader program from vertex and fragment shader sources.
+@param vertexShaderSource The source code for the vertex shader.
+@param fragmentShaderSource The source code for the fragment shader.
+@return The ID of the created shader program, or -1 if creation fails.
+*/
 int createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource)
 {
+    // ===================
+    // == vertex shader ==
+    // ===================
     unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
     glCompileShader(vertexShader);
@@ -147,6 +175,9 @@ int createShaderProgram(const char* vertexShaderSource, const char* fragmentShad
         return -1;
     }
 
+    // =====================
+    // == fragment shader ==
+    // =====================
     unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
     glCompileShader(fragmentShader);
@@ -159,6 +190,9 @@ int createShaderProgram(const char* vertexShaderSource, const char* fragmentShad
         return -1;
     }
 
+    // ====================
+    // == shader program ==
+    // ====================
     unsigned int shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
@@ -178,6 +212,12 @@ int createShaderProgram(const char* vertexShaderSource, const char* fragmentShad
     return shaderProgram;
 }
 
+/*
+Generates the vertices for a circle with the specified number of segments and radius.
+@param numSegments The number of segments to approximate the circle (more segments = smoother circle).
+@param radius The radius of the circle.
+@return A vector of floats containing the vertex positions for the circle. The first three values are the center vertex (0, 0, 0), followed by the vertices around the circumference.
+*/
 std::vector<float> generateVertices(int numSegments, float radius)
 {
     std::vector<float> vertices;
@@ -195,6 +235,11 @@ std::vector<float> generateVertices(int numSegments, float radius)
     return vertices;
 }
 
+/*
+Generates the indices for drawing a circle using triangle fan mode.
+@param numSegments The number of segments used to approximate the circle.
+@return A vector of unsigned integers containing the indices for drawing the circle.
+*/
 std::vector<unsigned int> generateIndices(int numSegments)
 {
     std::vector<unsigned int> indices;
