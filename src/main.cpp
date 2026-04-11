@@ -1,3 +1,8 @@
+/*
+TODO:
+1. Make the shaders as files and load them at runtime instead of hardcoding them in the source code.
+*/
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -11,6 +16,9 @@ GLFWwindow* initWindow(int width, int height, const char* title);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 int createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource);
+void setUnionValues(int shaderProgram);
+
+// Functions for generating vertices and indices for a circle
 std::vector<float> generateVertices(int numSegments, float radius = 0.5f);
 std::vector<unsigned int> generateIndices(int numSegments);
 
@@ -18,21 +26,20 @@ const char* vertexShaderSource = "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;\n"
     "void main()\n"
     "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    "    gl_Position = vec4(aPos, 1.0); // see how we directly give a vec3 to vec4's constructor\n"
     "}\0";
 
 const char* fragmentShaderSource = "#version 330 core\n"
     "out vec4 FragColor;\n"
+    "uniform vec4 ourColor;\n"
     "void main()\n"
     "{\n"
-    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+    "    FragColor = ourColor;\n"
     "}\0";
 
 int main() 
 {
-    int numberOfPoints;
-    std::cout << "Enter the number of segments for the polygon: ";
-    std::cin >> numberOfPoints;
+    int numberOfPoints = 3; 
 
     GLFWwindow* window = initWindow(800, 600, "Planatery System 2D");
     if (window == nullptr)
@@ -72,11 +79,16 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // draw call
+        // use the shader program
         glUseProgram(shaderProgram);
+
+        // update the uniform color
+        setUnionValues(shaderProgram);
+        
+        // draw call
         glBindVertexArray(VAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // wireframe mode
+        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // wireframe mode
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
         glfwSwapBuffers(window);
@@ -211,6 +223,21 @@ int createShaderProgram(const char* vertexShaderSource, const char* fragmentShad
 
     return shaderProgram;
 }
+
+/*
+Sets the uniform values for the shader program. 
+This function can be used to set any uniform variables defined in the shader, such as colors, transformation matrices, etc.
+@param shaderProgram The ID of the shader program for which to set the uniform values.
+*/
+void setUnionValues(int shaderProgram)
+{
+    // for now, we only have one uniform variable (ourColor) in the fragment shader
+    float timeValue = glfwGetTime();
+    float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
+    int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
+    glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+}
+
 
 /*
 Generates the vertices for a circle with the specified number of segments and radius.
