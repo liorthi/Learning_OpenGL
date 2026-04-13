@@ -16,3 +16,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glad::glad
     glm::glm
 )
+
+# copy shaders next to the exe after every build
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/src/vertexShader.GLSL"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/vertexShader.GLSL"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/src/fragmentShader.GLSL"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/fragmentShader.GLSL"
+)
