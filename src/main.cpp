@@ -1,8 +1,3 @@
-/*
-TODO:
-1. Make the shaders as files and load them at runtime instead of hardcoding them in the source code.
-*/
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -11,6 +6,9 @@ TODO:
 #include <string>
 #include <fstream>
 #include <sstream>
+
+#include "ShaderManager.h"
+
 #ifndef M_PI
     #define M_PI 3.14159265358979323846
 #endif
@@ -18,9 +16,6 @@ TODO:
 GLFWwindow* initWindow(int width, int height, const char* title);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
-std::string loadShaderSource(std::string filePath);
-int createShaderProgram(std::string vertexShaderPath, std::string fragmentShaderPath);
-void setUnionValues(int shaderProgram);
 
 // Functions for generating vertices and indices for a circle
 std::vector<float> generateVertices(int numSegments, float radius = 0.5f);
@@ -31,17 +26,14 @@ std::vector<unsigned int> generateIndices(int numSegments);
 
 int main() 
 {
-
-
     int numberOfPoints = 3; 
 
     GLFWwindow* window = initWindow(800, 600, "Planatery System 2D");
     if (window == nullptr)
         return -1;
 
-    int shaderProgram = createShaderProgram(VERTEX_SHADER_PATH, FRAGMENT_SHADER_PATH);
-    if (shaderProgram == -1)
-        return -1;
+
+    ShaderManager shader(VERTEX_SHADER_PATH, FRAGMENT_SHADER_PATH);
     
     std::vector<float> vertices = generateVertices(numberOfPoints, 0.5f);
     std::vector<unsigned int> indices = generateIndices(numberOfPoints);
@@ -79,11 +71,10 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // use the shader program
-        glUseProgram(shaderProgram);
+        // activate shader
+        shader.use(); // activate the shader program
 
-        // update the uniform color
-        setUnionValues(shaderProgram);
+        // set uniforms
         
         // draw call
         glBindVertexArray(VAO);
@@ -99,7 +90,6 @@ int main()
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
-    glDeleteProgram(shaderProgram);
     
     glfwTerminate();
     return 0;
@@ -161,115 +151,6 @@ void processInput(GLFWwindow *window)
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 }
-
-/*
-Loads the shader source code from a file and returns it as a null-terminated string.
-@param filePath The path to the shader source file.
-@return A pointer to a null-terminated string containing the shader source code, or nullptr if loading fails. The caller is responsible for freeing the allocated memory.
-*/
-std::string loadShaderSource(std::string filePath)
-{
-    std::ifstream file(filePath);
-    if (!file.is_open())
-    {
-        std::cout << "Failed to open shader file: " << filePath << std::endl;
-        return "";
-    }
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    std::string shaderSourceStr = buffer.str();
-    file.close();
-    return shaderSourceStr;
-}
-
-/*
-Creates a shader program from vertex and fragment shader sources.
-@param vertexShaderSource The source code for the vertex shader.
-@param fragmentShaderSource The source code for the fragment shader.
-@return The ID of the created shader program, or -1 if creation fails.
-*/
-int createShaderProgram(std::string vertexShaderPath, std::string fragmentShaderPath)
-{
-    // load shader sources from files
-    std::string vertexShaderCode = loadShaderSource(vertexShaderPath);
-    std::string fragmentShaderCode = loadShaderSource(fragmentShaderPath);
-
-    if (vertexShaderCode.empty() || fragmentShaderCode.empty())
-    {
-        std::cout << "Failed to load shader sources." << std::endl;
-        return -1;
-    }
-    const char* vertexShaderSource = vertexShaderCode.c_str();
-    const char* fragmentShaderSource = fragmentShaderCode.c_str();
-
-    // ===================
-    // == vertex shader ==
-    // ===================
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-        return -1;
-    }
-
-    // =====================
-    // == fragment shader ==
-    // =====================
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-        return -1;
-    }
-
-    // ====================
-    // == shader program ==
-    // ====================
-    unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if(!success)
-    {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-        return -1;
-    }
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    return shaderProgram;
-}
-
-/*
-Sets the uniform values for the shader program. 
-This function can be used to set any uniform variables defined in the shader, such as colors, transformation matrices, etc.
-@param shaderProgram The ID of the shader program for which to set the uniform values.
-*/
-void setUnionValues(int shaderProgram)
-{
-    // for now, we only have one uniform variable (ourColor) in the fragment shader
-    float timeValue = glfwGetTime();
-    float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
-    int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
-    glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
-}
-
 
 /*
 Generates the vertices for a circle with the specified number of segments and radius.
